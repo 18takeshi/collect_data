@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import datetime
 
 st.title('勤務データ集計アプリ')
 st.caption('ver.1.0 2023/1/6')
@@ -21,6 +22,7 @@ if uploaded_file is not None and origin_sheet is not None:
     df_sheet = df_sheet[['社員番号','社員']]
     df_sheet['~17時'] = 0
     df_sheet['17時~'] = 0
+    df_sheet = df_sheet.drop('社員',axis=1)
 
     #出勤データ編集
     for file in uploaded_file:
@@ -29,6 +31,8 @@ if uploaded_file is not None and origin_sheet is not None:
         day = str(file.name)
         day = day.split('_')
         day = day[0]
+        after = datetime.datetime.strptime(day, '%Y-%m-%d')
+
         df = df.rename(columns={'労働時間':day})
 
         df_sheet[day] = np.nan
@@ -38,7 +42,12 @@ if uploaded_file is not None and origin_sheet is not None:
             df_sheet.at[i,'~17時'] += b17   #17時集計の更新
             df_sheet.at[i,'17時~'] += a17
 
-    df_sheet = df_sheet.drop('社員',axis=1)
+    #出勤日時ソート 日付のみバラしてソート
+    df_date = df_sheet.drop(['社員番号','~17時','17時~'],axis=1)
+    date_columns = df_date.columns
+    date_columns = sorted(date_columns)
+    df_date = df_date.reindex(date_columns,axis=1)
+    df_sheet = pd.concat([df_sheet[['社員番号','~17時','17時~']],df_date],axis=1)
 
     #エクスポート用ファイル名
     columns = list(df_sheet.columns)
