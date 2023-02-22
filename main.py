@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import datetime
 
-st.title('ベルーフ静岡店 データ集計アプリ')
+st.title('勤務データ集計アプリ')
 st.caption('ver.1.1 2023/2/22')
 
 #csvコンバーター
