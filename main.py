@@ -3,8 +3,8 @@ import pandas as pd
 import numpy as np
 import datetime
 
-st.title('勤務データ集計アプリ')
-st.caption('ver.1.0 2023/1/6')
+st.title('ベルーフ静岡店 データ集計アプリ')
+st.caption('ver.1.1 2023/2/22')
 
 #csvコンバーター
 def convert_df(df):
@@ -17,17 +17,21 @@ origin_sheet = st.sidebar.file_uploader('勤務表をアップロードしてく
 if uploaded_file is not None and origin_sheet is not None:
 
     #勤務表df(df_sheet)前処理
-    df_sheet = pd.read_excel(origin_sheet,index_col=1)
+    df_sheet = pd.read_excel(origin_sheet,index_col=0)
     df_sheet = df_sheet.drop('出退勤')
-    df_sheet = df_sheet[['社員番号','社員']]
+    df_sheet = df_sheet[['時給','交通費','社員','契約社員']]
     df_sheet['~17時'] = 0
     df_sheet['17時~'] = 0
+    df_sheet['給料'] = 0
+
+    #社員、契約社員は集計しない
     df_sheet = df_sheet.drop('社員',axis=1)
+    df_sheet = df_sheet.drop('契約社員',axis=1)
 
     #出勤データ編集
     for file in uploaded_file:
         df = pd.read_csv(file,encoding='shift-jis',index_col=0)
-        df = df[['労働時間','index','~17時','17時~']]
+        df = df[['~17時','17時~','労働時間','日給']]
         day = str(file.name)
         day = day.split('_')
         day = day[0]
@@ -36,34 +40,41 @@ if uploaded_file is not None and origin_sheet is not None:
         df = df.rename(columns={'労働時間':day})
 
         df_sheet[day] = np.nan
-        
-        for d,i,b17,a17 in zip(df[day],df['index'],df['~17時'],df['17時~']):
+        df['index'] = df.index
+
+        for d,i,b17,a17,m in zip(df[day],df['index'],df['~17時'],df['17時~'],df['日給']):
             df_sheet.at[i,day] = d
             df_sheet.at[i,'~17時'] += b17   #17時集計の更新
             df_sheet.at[i,'17時~'] += a17
+            df_sheet.at[i,'給料'] += m      #給料の更新
 
+    #勤務時間合計
+    df_sheet['合計時間'] = df_sheet['17時~'] + df_sheet['~17時']
+    
     #出勤日時ソート 日付のみバラしてソート
-    df_date = df_sheet.drop(['社員番号','~17時','17時~'],axis=1)
+    df_date = df_sheet.drop(['時給','交通費','~17時','17時~','合計時間','給料'],axis=1)
     date_columns = df_date.columns
     date_columns = sorted(date_columns)
     df_date = df_date.reindex(date_columns,axis=1)
-    df_sheet = pd.concat([df_sheet[['社員番号','~17時','17時~']],df_date],axis=1)
+    df_sheet = pd.concat([df_sheet[['時給','交通費','~17時','17時~','合計時間','給料']],df_date],axis=1)
 
     #エクスポート用ファイル名
     columns = list(df_sheet.columns)
     start = columns[3]
     finish = columns.pop()
 
-    #勤務時間合計
-    df_sheet['合計'] = df_sheet['17時~'] + df_sheet['~17時']
+    #Streamlit用に0の空白化、数値丸め込み
+    df_sheet = df_sheet.replace(0,np.nan)
+    df_format = df_sheet.style.highlight_null(props="color: transparent;")
+    df_format = df_format.format("{:.1f}".format)
 
     st.header('集計結果')
-    st.dataframe(df_sheet)
+    st.dataframe(df_format)
 
     #合計勤務時間アラート
     df_sheet['index'] = df_sheet.index
     over_80 = []
-    for n,i in zip(df_sheet['合計'],df_sheet['index']):
+    for n,i in zip(df_sheet['合計時間'],df_sheet['index']):
         if n>= 80:
             over_80.append(i)
 
