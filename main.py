@@ -4,7 +4,7 @@ import numpy as np
 import datetime
 
 st.title('勤務データ集計アプリ')
-st.caption('ver.1.1 2023/2/22')
+st.caption('ver.1.02 2023/3/09')
 
 #csvコンバーター
 def convert_df(df):
