@@ -4,7 +4,7 @@ import numpy as np
 import datetime
 
 st.title('勤務データ集計アプリ')
-st.caption('ver.1.02 2023/3/09')
+st.caption('ver.1.03 2023/4/08')
 
 #csvコンバーター
 def convert_df(df):
@@ -20,8 +20,6 @@ if uploaded_file is not None and origin_sheet is not None:
     df_sheet = pd.read_excel(origin_sheet,index_col=0)
     df_sheet = df_sheet.drop('出退勤')
     df_sheet = df_sheet[['時給','交通費','社員','契約社員']]
-    df_sheet['~17時'] = 0
-    df_sheet['17時~'] = 0
     df_sheet['給料'] = 0
 
     #社員、契約社員は集計しない
@@ -31,7 +29,7 @@ if uploaded_file is not None and origin_sheet is not None:
     #出勤データ編集
     for file in uploaded_file:
         df = pd.read_csv(file,encoding='shift-jis',index_col=0)
-        df = df[['~17時','17時~','労働時間','日給']]
+        df = df[['労働時間','日給']]
         day = str(file.name)
         day = day.split('_')
         day = day[0]
@@ -42,21 +40,22 @@ if uploaded_file is not None and origin_sheet is not None:
         df_sheet[day] = np.nan
         df['index'] = df.index
 
-        for d,i,b17,a17,m in zip(df[day],df['index'],df['~17時'],df['17時~'],df['日給']):
+        for d,i,m in zip(df[day],df['index'],df['日給']):
             df_sheet.at[i,day] = d
-            df_sheet.at[i,'~17時'] += b17   #17時集計の更新
-            df_sheet.at[i,'17時~'] += a17
             df_sheet.at[i,'給料'] += m      #給料の更新
 
     #勤務時間合計
-    df_sheet['合計時間'] = df_sheet['17時~'] + df_sheet['~17時']
+    df_sum = df_sheet.drop('時給',axis=1)
+    df_sum = df_sum.drop('交通費',axis=1)
+    df_sum = df_sum.drop('給料',axis=1)
+    df_sheet['合計時間'] = df_sum.sum(axis=1)
     
     #出勤日時ソート 日付のみバラしてソート
-    df_date = df_sheet.drop(['時給','交通費','~17時','17時~','合計時間','給料'],axis=1)
+    df_date = df_sheet.drop(['時給','交通費','合計時間','給料'],axis=1)
     date_columns = df_date.columns
     date_columns = sorted(date_columns)
     df_date = df_date.reindex(date_columns,axis=1)
-    df_sheet = pd.concat([df_sheet[['時給','交通費','~17時','17時~','合計時間','給料']],df_date],axis=1)
+    df_sheet = pd.concat([df_sheet[['時給','交通費','合計時間','給料']],df_date],axis=1)
 
     #エクスポート用ファイル名
     columns = list(df_sheet.columns)
