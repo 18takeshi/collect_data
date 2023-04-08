@@ -59,7 +59,7 @@ if uploaded_file is not None and origin_sheet is not None:
 
     #エクスポート用ファイル名
     columns = list(df_sheet.columns)
-    start = columns[5]
+    start = columns[4]
     finish = columns.pop()
 
     #Streamlit用に0の空白化、数値丸め込み
